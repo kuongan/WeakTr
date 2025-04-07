@@ -107,7 +107,7 @@ categories_coco = ['background',
 
 
 def do_python_eval(predict_folder, gt_folder, name_list, num_cls=21, input_type='png', threshold=1.0, printlog=False,
-                   out_crf=False, n_jobs=10, img_dir=None, cam_type="cam", out_dir=None):
+                   out_crf=False, n_jobs=6, img_dir=None, cam_type="cam", out_dir=None):
     def compare(idx):
         name = name_list[idx]
         if input_type == 'png':
