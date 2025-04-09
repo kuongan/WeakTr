@@ -54,11 +54,57 @@ Besides, we propose a ViT-based gradient clipping decoder for online retraining 
 - **`2023/08/31`**: 🔥 We update the experiments based on the EVA-02 and DINOv2 pretrain weight which need to [update the environment](docs/Install.md#environment-update).
 
 ## Getting Started
-- [Installation](docs/Install.md)
-- [Prepare Dataset](docs/prepare_dataset.md)
-- [Training](docs/Training.md)
-- [Evaluate](docs/Evaluate.md)
 
+### Exploring BEiT3 for Weakly-supervised Semantic Segmentation
+
+In this work, we investigate the use of BEiT3, a versatile multimodal foundation model that achieves state-of-the-art performance across both vision and vision-language tasks, for Weakly-Supervised Semantic Segmentation (WSSS). Class Activation Maps (CAMs) play a vital role in interpreting classification models and serve as a crucial starting point for WSSS pipelines. We leverage BEiT3's powerful image encoder to generate attention maps, producing high-quality CAMs that tend to capture more complete object regions in the image.
+
+
+### Environment set up
+At first, you need to download our environment [conda pack](https://drive.google.com/file/d/1klTspDVAg8BCU4X2-bOF1sy5GN7kH5Zz/view?usp=sharing) and extract in ```YOUR_CONDA_ENV_DIR``` to create a new environment ```beit```, then activate this environment.
+
+```python
+wget https://drive.google.com/file/d/1klTspDVAg8BCU4X2-bOF1sy5GN7kH5Zz/view?usp=sharing
+mkdir beit
+tar -xzvf beit.tar.gz -C YOUR_CONDA_ENV_DIR
+```
+Run ```conda env list``` to make sure that environment ```beit``` was installed successfully. Next, you need to activate the environment by running ```conda activate beit```
+
+### Clone repositories
+You need to clone repository [WeakTr](https://github.com/kuongan/WeakTr.git) first and clone another repository [unilm](https://github.com/microsoft/unilm/tree/master) insde the ```WeakTr``` dir
+```
+git clone https://github.com/kuongan/WeakTr.git
+cd WeakTr
+git clone https://github.com/microsoft/unilm/tree/master
+```
+### Data preparation
+Download [VOC2012](https://www.kaggle.com/datasets/kuongan/vocdevkit12) dataset in the ```data``` dir and The folder structure is assumed to be:
+``````
+📦 WeakTr
+└─ data
+   └─ voc12
+      └─ VOCdevkit
+         └─ VOC2012
+            ├─ Annotations
+            ├─ DummyTest
+            ├─ ImageSets
+            ├─ JPEGImages
+            ├─ SegmentationClass
+            ├─ SegmentationClassAug
+            ├─ SegmentationObject
+            └─ third_party
+``````
+
+### Training
+Download initialized checkpoint [beit3_base_patch16_224](https://github.com/addf400/files/releases/download/beit3/beit3_base_patch16_224.pth) for BEiT3
+```
+wget https://github.com/addf400/files/releases/download/beit3/beit3_base_patch16_224.pth
+```
+Run this command to start training
+```
+python main_beit.py --model beit3_base_wsss_patch16_224 --data-path data --data-set VOC12  --finetune beit3_base_patch16_224.pth --img-ms-list voc12/train_id.txt --cam-npy-dir ./result --reduction 8 --pool-type max  --weight-decay 0.03 --epochs 60 --batch-size 6
+
+```
 
 ## Main results
 
