@@ -119,33 +119,47 @@ class BEiT3Segmentation(BEiT3Wrapper):
 
 
     def forward(self, x, return_att=False, attention_type='fused'):
-        B, C, H, W = x.shape
+        B, C, W, H = x.shape
         x_cls, x_patch, attn_weights, attn_feats = self.extract_features(x)
         #print("x_cls", x_cls.shape, "x_patch", x_patch.shape, "attn_weights", len(attn_weights))
-        w0, h0 = H // self.patch_size, W // self.patch_size
-        if x_patch.shape[1] > (w0 * h0):
-            x_patch = x_patch[:, : (w0 * h0), :]
-
-        x_patch = x_patch.view(B, w0, h0, self.embed_dim).permute(0, 3, 1, 2)
-    
+        n, p, c = x_patch.shape
+        if W != H:
+            w0 = W // self.patch_size
+            h0 = H // self.patch_size
+            x_patch = torch.reshape(x_patch, [n, w0, h0, c])
+        else:
+            x_patch = torch.reshape(x_patch, [n, int(p ** 0.5), int(p ** 0.5), c])
+        x_patch = x_patch.permute([0, 3, 1, 2])
+        x_patch = x_patch.contiguous()
+        #print("x_patch", x_patch.shape)  # B, Dim, H, W 4,768,14,14  
         x_patch = self.head(x_patch)
-    
-        coarse_cam_pred = self.avgpool(x_patch).squeeze(-1).squeeze(-1)
+        #print("x_patch", x_patch.shape)     # B, C, H, W 4,20,14,14
+        coarse_cam_pred = self.avgpool(x_patch).squeeze(3).squeeze(2)
     
         attn_weights = torch.stack(attn_weights)  # [L, H, B, N, N]
         attn_feats = torch.stack(attn_feats)      # [L, B, N, embed_dim]
-        #print("attn_weights", attn_weights.shape)
+        #print("attn_weights", attn_weights.shape) #([12, 12, 4, 216, 216])
+        #print("attn_feats", attn_feats.shape)      #([12, 4, 216, 768])
+        attn_weights_detach = attn_weights.detach().clone()
+        k, h, b, n, m = attn_weights_detach.shape
+        attn_weights_detach = attn_weights_detach.permute([2, 1, 0, 3, 4]).contiguous()
+        attn_weights_detach = attn_weights_detach.view(b, h * k, n, m)
+        #attn_weights = attn_weights.permute(2, 1, 0, 3, 4).reshape(B, H * L, N, N)
+        #print("attn_weights", attn_weights_detach.shape) #([4, 144, 216, 216])
+        
+        attn_feats_detach = attn_feats.detach().clone()
+        #print("attn_feats_detach", attn_feats_detach.shape) #([12, 4, 216, 768])
+        k, b, n, c = attn_feats_detach.shape
+        attn_feats_detach = attn_feats_detach.view(k, b, n, -1, h)
+        attn_feats_detach = attn_feats_detach.permute([1, 4, 0, 2, 3]).contiguous()
+        attn_feats_detach = attn_feats_detach.view(b, h * k, n, -1)
+        #L2, B3, N2, C2 = attn_feats.shape
+        #head_dim = C2 // self.num_heads
 
-        L, H, B, N, _ = attn_weights.shape
-        attn_weights = attn_weights.permute(2, 1, 0, 3, 4).reshape(B, H * L, N, N)
-        #print("attn_weights", attn_weights.shape)
-        L2, B3, N2, C2 = attn_feats.shape
-        head_dim = C2 // self.num_heads
-
-        attn_feats = attn_feats.view(L2, B3, N2, self.num_heads, head_dim).permute(1, 3, 0, 2, 4)
-        attn_feats = attn_feats.reshape(B3, self.num_heads * L2, N2, head_dim)
-        #print("attn_feats", attn_feats.shape)
-        cross_attn_map, patch_attn_map = self.adaptive_attention_fusion(attn_feats, attn_weights)
+        #attn_feats = attn_feats.view(L2, B3, N2, self.num_heads, head_dim).permute(1, 3, 0, 2, 4)
+        #attn_feats = attn_feats.reshape(B3, self.num_heads * L2, N2, head_dim)
+        #print("attn_feats_detach", attn_feats_detach.shape) #([4, 144, 216, 64])
+        cross_attn_map, patch_attn_map = self.adaptive_attention_fusion(attn_feats_detach, attn_weights_detach)
         #print("cross_attn_map", cross_attn_map.shape, "patch_attn_map", patch_attn_map.shape)
         coarse_cam = F.relu(x_patch.detach().clone())
         
@@ -166,12 +180,12 @@ class BEiT3Segmentation(BEiT3Wrapper):
             reshape(cams.shape[0], cams.shape[1], h, w)
 
         fine_cam_pred = self.avgpool(fine_cam).squeeze(3).squeeze(2)
-        
+        patch_attn = patch_attn.unsqueeze(0)
         cls_token_pred = x_cls.mean(-1)  # [B, C]
 
         # Return
         if return_att:
-            return cls_token_pred, cams.view(n, c, h, w), patch_attn.unsqueeze(0)
+            return cls_token_pred, cams, patch_attn
         else:
             return cls_token_pred, coarse_cam_pred, fine_cam_pred
 
