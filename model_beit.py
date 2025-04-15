@@ -15,11 +15,12 @@ class BEiT3Segmentation(BEiT3Wrapper):
         arg=None,
         num_classes=20,
         reduction=4,
-        pool="avg",
-        AdaptiveAttentionFusion=None,
+        pool_type="avg",
+        AdaptiveAttentionFusion=AAF,
         feat_reduction=4,
         **kwargs
     ):
+        assert arg is not None, "Missing backbone config `arg`"
         super(BEiT3Segmentation, self).__init__(args=arg)
 
         self.embed_dim = arg.encoder_embed_dim
@@ -27,13 +28,14 @@ class BEiT3Segmentation(BEiT3Wrapper):
         self.patch_size = arg.patch_size
         self.num_heads = arg.encoder_attention_heads
         self.depth = arg.encoder_layers
+
         num_patches = self.beit3.vision_embed.num_patches
         self.head = nn.Conv2d(self.embed_dim, self.num_classes, kernel_size=3, stride=1, padding=1)
         self.avgpool = nn.AdaptiveAvgPool2d(1)
         self.head.apply(self._init_weights)
 
         self.cls_token = nn.Parameter(torch.zeros(1, self.num_classes, self.embed_dim))
-        self.pos_embed = nn.Parameter(torch.zeros(1, num_patches + self.num_classes, self.embed_dim))  # Placeholder 1000 patches
+        self.pos_embed = nn.Parameter(torch.zeros(1, num_patches + self.num_classes, self.embed_dim))
         trunc_normal_(self.cls_token, std=.02)
         trunc_normal_(self.pos_embed, std=.02)
 
@@ -43,7 +45,7 @@ class BEiT3Segmentation(BEiT3Wrapper):
             reduction=reduction,
             feats_channel=feats_channel,
             feat_reduction=feat_reduction,
-            pool=pool
+            pool=pool_type
         )
         self.adaptive_attention_fusion = AdaptiveAttentionFusion(**aaf_params) if AdaptiveAttentionFusion else None
         
@@ -190,16 +192,34 @@ class BEiT3Segmentation(BEiT3Wrapper):
             return cls_token_pred, coarse_cam_pred, fine_cam_pred
 
 
-
 @register_model
 def beit3_base_wsss_patch16_224(pretrained=False, **kwargs):
-    args_cfg = _get_base_config(img_size=224, patch_size=16)
+    # Tách các tham số backbone ra khỏi kwargs
+    img_size = kwargs.pop("img_size", 224)
+    patch_size = kwargs.pop("patch_size", 16)
+    drop_path_rate = kwargs.pop("drop_path_rate", 0.1)
+    mlp_ratio = kwargs.pop("mlp_ratio", 4.0)
+    vocab_size = kwargs.pop("vocab_size", 64010)
+    checkpoint_activations = kwargs.pop("checkpoint_activations", False)
+
+    # Tạo config cho backbone
+    args_cfg = _get_base_config(
+        img_size=img_size,
+        patch_size=patch_size,
+        drop_path_rate=drop_path_rate,
+        mlp_ratio=mlp_ratio,
+        vocab_size=vocab_size,
+        checkpoint_activations=checkpoint_activations,
+    )
+
+    # Tạo model segmentation
     model = BEiT3Segmentation(
         arg=args_cfg,
         AdaptiveAttentionFusion=AAF,
-        **kwargs
+        **kwargs  
     )
     return model
+
 
 @register_model
 def beit3_base_wsss_aaf_randweight_patch16_224(pretrained=False, **kwargs):

@@ -56,6 +56,10 @@ def get_args_parser():
                         help='Dropout rate (default: 0.)')
     parser.add_argument('--drop-path', type=float, default=0.1, metavar='PCT',
                         help='Drop path rate (default: 0.1)')
+    parser.add_argument('--mlp-ratio', type=float, default=4.0, help="MLP hidden dim ratio")
+    parser.add_argument('--vocab-size', type=int, default=64010, help="Tokenizer vocab size")
+    parser.add_argument('--checkpoint-activations', action='store_true', help="Enable activation checkpointing")
+
 
     # AAF parameters
     parser.add_argument("--reduction", type=float, default=4)
@@ -87,14 +91,14 @@ def get_args_parser():
                         help='learning rate noise limit percent (default: 0.67)')
     parser.add_argument('--lr-noise-std', type=float, default=1.0, metavar='STDDEV',
                         help='learning rate noise std-dev (default: 1.0)')
-    parser.add_argument('--warmup-lr', type=float, default=1e-6, metavar='LR',
-                        help='warmup learning rate (default: 1e-6)')
-    parser.add_argument('--min-lr', type=float, default=1e-5, metavar='LR',
+    parser.add_argument('--warmup-lr', type=float, default=5e-4, metavar='LR',
+                        help='warmup learning rate (default: 5e-4)')
+    parser.add_argument('--min-lr', type=float, default=1e-6, metavar='LR',
                         help='lower lr bound for cyclic schedulers that hit 0 (1e-5)')
 
     parser.add_argument('--decay-epochs', type=float, default=30, metavar='N',
                         help='epoch interval to decay LR')
-    parser.add_argument('--warmup-epochs', type=int, default=5, metavar='N',
+    parser.add_argument('--warmup-epochs', type=int, default=3, metavar='N',
                         help='epochs to warmup LR, if scheduler supports')
     parser.add_argument('--cooldown-epochs', type=int, default=10, metavar='N',
                         help='epochs to cooldown LR at min_lr, after cyclic schedule ends')
@@ -128,7 +132,7 @@ def get_args_parser():
                         help='Do not random erase first (clean) augmentation split')
 
     # * Finetuning params
-    parser.add_argument('--finetune', default='https://dl.fbaipublicfiles.com/deit/deit_small_patch16_224-cd65a155.pth', help='finetune from checkpoint')
+    parser.add_argument('--finetune', default='', help='finetune from checkpoint')
     parser.add_argument('--extra-token', action="store_true", default=True)
     parser.add_argument('--no-extra-token', action="store_false", dest="extra-token")
 
