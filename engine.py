@@ -28,8 +28,8 @@ def train_one_epoch(model: torch.nn.Module, data_loader: Iterable,
         targets = targets.to(device, non_blocking=True)
 
         with torch.cuda.amp.autocast():
-            outputs, patch_outputs, attn_outputs = model(samples)
-
+            outputs, patch_outputs, attn_outputs = model(samples,targets)
+            #print("attn_outputs:", attn_outputs.shape if attn_outputs is not None else None)
             loss = F.multilabel_soft_margin_loss(outputs, targets)
             metric_logger.update(cls_loss=loss.item())
 
@@ -40,7 +40,6 @@ def train_one_epoch(model: torch.nn.Module, data_loader: Iterable,
             aloss = F.multilabel_soft_margin_loss(attn_outputs, targets)
             metric_logger.update(attn_loss=aloss.item())
             loss = loss + aloss
-
         loss_value = loss.item()
 
         if not math.isfinite(loss_value):
