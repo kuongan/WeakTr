@@ -14,8 +14,8 @@ from timm.optim import create_optimizer
 from timm.utils import NativeScaler
 
 from datasets import build_dataset
-from engine import train_one_epoch, evaluate, generate_attention_maps_ms
-import model_beit
+from enginerpn import train_one_epoch, evaluate, generate_attention_maps_ms
+import models
 import utils
 import random
 import numpy as np
@@ -282,7 +282,7 @@ def main(args):
     )
 
     print(f"Creating model: {args.model}")
-
+    args.nb_classes = 20
     model_params = dict(
         model_name=args.model,
         pretrained=False,
@@ -302,21 +302,21 @@ def main(args):
     if args.resume and os.path.isfile(args.resume):
         checkpoint = torch.load(args.resume, map_location='cpu')
         print(f"=> Loaded checkpoint from {args.resume}")
-        model.load_state_dict(checkpoint['model'], strict=False)
+        model.load_state_dict(checkpoint, strict=False)
         
-        if 'optimizer' in checkpoint:
-            optimizer.load_state_dict(checkpoint['optimizer'])
-        if 'epoch' in checkpoint:
-            args.start_epoch = checkpoint['epoch'] + 1
-            print(f"=> Resuming from epoch {args.start_epoch}")
-    else:
-        if args.finetune and not args.gen_attention_maps:
-            load_model_and_may_interpolate(
-                ckpt_path=args.finetune,
-                model=model,
-                model_key='model|module|state_dict',
-                model_prefix=""
-            )
+        # if 'optimizer' in checkpoint:
+        #     optimizer.load_state_dict(checkpoint['optimizer'])
+        # if 'epoch' in checkpoint:
+        #     args.start_epoch = checkpoint['epoch'] + 1
+        #     print(f"=> Resuming from epoch {args.start_epoch}")
+    # else:
+    #     if args.finetune and not args.gen_attention_maps:
+    #         load_model_and_may_interpolate(
+    #             ckpt_path=args.finetune,
+    #             model=model,
+    #             model_key='model|module|state_dict',
+    #             model_prefix=""
+    #         )
     model.to(device)
 
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)

@@ -176,3 +176,8 @@ OnlineRetraining/start*
 OnlineRetraining/seg*
 !OnlineRetraining/segm
 /result/
+/visual/
+/inference/
+/WeakTr_re_final/
+/numpy_file/
+/beit3_base_patch16_224.pth
